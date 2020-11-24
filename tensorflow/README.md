@@ -36,13 +36,19 @@ docker-compose logs
 ```
 
 You will see that the resnet container waits for the serving to be running before continue its own initialization.
+Also, you will see a log like the following indicating that there is not
+a servable model:
+
+```
+2020-11-15 12:41:39.172193: W tensorflow_serving/sources/storage_path/file_system_storage_path_source.cc:267] No versions of servable resnet found under base path /bitnami/model-data
+```
 
 Let's initialize the ResNet model into the data folder so the Serving container can start to serve the model:
 
 Exec into the ResNet container by executing:
 
 ```console
-docker-compose exec tensorflow-resnet bash
+docker-compose exec --user 0 tensorflow-resnet bash
 ```
 
 And run the following commands inside the ResNet container:
@@ -56,13 +62,47 @@ touch /bitnami/model-data/.initialized
 
 We have downloaded a ResNet model and we loaded it into the data folder for the serving service.
 
+Checking the logs of the serving container you will see something similar to the following, indicating that the model has been loaded succesfully:
+
+```
+tensorflow-serving_1  | 2020-11-15 12:47:29.193087: I tensorflow_serving/core/basic_manager.cc:739] Successfully reserved resources to load servable {name: resnet version: 1538687457}
+tensorflow-serving_1  | 2020-11-15 12:47:29.193139: I tensorflow_serving/core/loader_harness.cc:66] Approving load for servable version {name: resnet version: 1538687457}
+tensorflow-serving_1  | 2020-11-15 12:47:29.193152: I tensorflow_serving/core/loader_harness.cc:74] Loading servable version {name: resnet version: 1538687457}
+tensorflow-serving_1  | 2020-11-15 12:47:29.193187: I external/org_tensorflow/tensorflow/cc/saved_model/reader.cc:31] Reading SavedModel from: /bitnami/model-data/1538687457
+tensorflow-serving_1  | 2020-11-15 12:47:29.201240: I external/org_tensorflow/tensorflow/cc/saved_model/reader.cc:54] Reading meta graph with tags { serve }
+tensorflow-serving_1  | 2020-11-15 12:47:29.201277: I external/org_tensorflow/tensorflow/cc/saved_model/loader.cc:234] Reading SavedModel debug info (if present) from: /bitnami/model-data/1538687457
+tensorflow-serving_1  | 2020-11-15 12:47:29.201363: I external/org_tensorflow/tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN)to use the following CPU instructions in performance-critical operations:  SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA
+tensorflow-serving_1  | To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+tensorflow-serving_1  | 2020-11-15 12:47:29.238386: I external/org_tensorflow/tensorflow/cc/saved_model/loader.cc:199] Restoring SavedModel bundle.
+tensorflow-serving_1  | 2020-11-15 12:47:29.425811: I external/org_tensorflow/tensorflow/cc/saved_model/loader.cc:183] Running initialization op on SavedModel bundle at path: /bitnami/model-data/1538687457
+tensorflow-serving_1  | 2020-11-15 12:47:29.436576: I external/org_tensorflow/tensorflow/cc/saved_model/loader.cc:303] SavedModel load for tags { serve }; Status: success: OK. Took 243386 microseconds.
+tensorflow-serving_1  | 2020-11-15 12:47:29.438755: I tensorflow_serving/servables/tensorflow/saved_model_warmup_util.cc:59] No warmup data file found at /bitnami/model-data/1538687457/assets.extra/tf_serving_warmup_requests
+tensorflow-serving_1  | 2020-11-15 12:47:29.440421: I tensorflow_serving/core/loader_harness.cc:87] Successfully loaded servable version {name: resnet version: 1538687457}
+tensorflow-serving_1  | 2020-11-15 12:47:29.445135: I tensorflow_serving/model_servers/server.cc:367] Running gRPC ModelServer at 0.0.0.0:8500 ...
+tensorflow-serving_1  | [warn] getaddrinfo: address family for nodename not supported
+tensorflow-serving_1  | [evhttp_server.cc : 238] NET_LOG: Entering the event loop ...
+tensorflow-serving_1  | 2020-11-15 12:47:29.448176: I tensorflow_serving/model_servers/server.cc:387] Exporting HTTP/REST API at:localhost:8501 ...
+```
+
+As you can see there will be a ModelServer running at port `8500` using gRPC and a rest API at port `8501`.
 Now, we can start to query the serving service and it will process our request based on the loaded model and send back the result:
 
-Execute into the ResNet container the following command:
+Let's send an image to the serving service so it can classify it. Execute into the ResNet container the following commands:
 
 ```console
-resnet_client_cc --server_port=tensorflow-serving:8500 --image_file=/tmp/example.jpg
+curl -LO 'https://tensorflow.org/images/blogs/serving/cat.jpg'
+resnet_client_cc --server_port=tensorflow-serving:8500 --image_file=cat.jpg
 ```
+
+You will obtain the following response:
+
+```
+the result tensor[1] is:
+286
+Done.
+```
+
+To check which animal corresponds to that code we will need to search the code in this [file](https://s3.amazonaws.com/deep-learning-models/image-models/imagenet_class_index.json).
 
 > NOTE: We are using here the same ResNet container that was deployed with the docker-compose, but since we already loaded the model into the serving volume, you can run the queries from wherever you want. You just need the `resnet_client_cc` binary in your `PATH`, and change the `--server-port` option to use the proper `IP:PORT`. You will also need to mount the image you want to send using the `-v` option. Be carefull with the Docker networking, the containers created using `docker run` are not in the same network than the ones create using `docker-compose`.
 
