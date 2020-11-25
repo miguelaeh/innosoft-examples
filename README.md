@@ -26,6 +26,6 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 
 1. The first example will deploy Tensorflow Serving that will serve a pre-loaded ResNet model using the [bitnami/tensorflow-serving](https://github.com/bitnami/bitnami-docker-tensorflow-serving) container. In this example, we will also show how to perform queries from the [bitnami/tensorflow-resnet](https://github.com/bitnami/bitnami-docker-tensorflow-resnet) container. We will follow the process either using Helm Charts and docker-compose. Follow the complete guide [here](tensorflow/README.md).
 
-2. TODO: pytorch example
+2. The second example will guide you to train a LSTM model using Pytorch and then use it to generate a `1000` words text. In this example we will use the [Pytorch official examples](https://github.com/pytorch/examples.git).
 
 
