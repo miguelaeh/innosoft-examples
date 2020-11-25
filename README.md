@@ -4,7 +4,7 @@ This repo contains examples used to show bitnami solutions, mainly Helm Charts, 
 
 ## Prepare the environment
 
-### T follow the docker-compose examples:
+### To follow the docker-compose examples:
 
 1. Install Docker: https://docs.docker.com/engine/install/
 
